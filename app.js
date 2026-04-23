@@ -8,6 +8,18 @@ const CONFIG = {
   BLOCK_SIZE: 24
 };
 
+function generateAttemptId() {
+  if (
+    typeof crypto !== "undefined" &&
+    crypto &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return "attempt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
+}
+
 const questionBank = [
   { id: "q1", group: "ГР1", question: "Що найбільше впливало на життя і заняття населення Давньої Греції?", options: ["Великі рівнини та повноводні річки", "Гори, море і нестача родючих земель", "Лише густі ліси", "Суворі морози протягом усього року"], correct: 1 },
   { id: "q2", group: "ГР1", question: "Яка цивілізація виникла на острові Крит?", options: ["Ахейська", "Мінойська", "Римська", "Фінікійська"], correct: 1 },
@@ -61,7 +73,7 @@ const questionBank = [
 ];
 
 const appState = {
-  attemptId: crypto.randomUUID(),
+  attemptId: generateAttemptId(),
   studentName: "",
   className: "",
   shuffledQuestions: [],
@@ -121,6 +133,7 @@ function startMainTimer() {
   clearInterval(appState.mainTimerId);
   appState.mainTimerId = setInterval(() => {
     if (appState.isPausedForBreak) return;
+
     appState.mainTimer -= 1;
     $("timerLabel").textContent = formatTime(Math.max(appState.mainTimer, 0));
 
@@ -182,6 +195,7 @@ function renderQuestion() {
 function saveCurrentAnswer() {
   const question = appState.shuffledQuestions[appState.currentIndex];
   const checked = document.querySelector(`input[name="${question.id}"]:checked`);
+
   if (checked) {
     appState.answers[question.id] = Number(checked.value);
   }
@@ -204,6 +218,7 @@ function nextQuestion() {
 
 function prevQuestion() {
   saveCurrentAnswer();
+
   if (appState.currentIndex > 0) {
     appState.currentIndex -= 1;
     renderQuestion();
@@ -221,6 +236,7 @@ function pauseForBreak() {
 
 function continueAfterBreak() {
   if (!appState.hasCompletedBreak) return;
+
   appState.isPausedForBreak = false;
   appState.currentIndex = CONFIG.BLOCK_SIZE;
   showScreen("screen-test");
@@ -287,6 +303,7 @@ function computeResults() {
 
   appState.shuffledQuestions.forEach((question) => {
     groupScores[question.group].total += 1;
+
     if (appState.answers[question.id] === question.correct) {
       raw += 1;
       groupScores[question.group].correct += 1;
@@ -303,6 +320,7 @@ function computeResults() {
 
 function buildPayload() {
   const results = computeResults();
+
   return {
     attemptId: appState.attemptId,
     studentName: appState.studentName,
@@ -370,7 +388,7 @@ async function sendPayload() {
   const payload = buildPayload();
   const statusNode = $("submitStatus");
 
-  if (!CONFIG.GAS_URL || CONFIG.GAS_URL.includes("PASTE_YOUR_GAS_WEB_APP_URL_HERE")) {
+  if (!CONFIG.GAS_URL) {
     statusNode.textContent = "Не задано GAS_URL у файлі app.js.";
     statusNode.className = "error";
     return;
@@ -414,7 +432,7 @@ function resetApp() {
   clearInterval(appState.mainTimerId);
   clearInterval(appState.breakTimerId);
 
-  appState.attemptId = crypto.randomUUID();
+  appState.attemptId = generateAttemptId();
   appState.studentName = "";
   appState.className = "";
   appState.shuffledQuestions = [];
