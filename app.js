@@ -1,5 +1,5 @@
 const CONFIG = {
-  GAS_URL: "PASTE_YOUR_GAS_WEB_APP_URL_HERE",
+  GAS_URL: "https://script.google.com/macros/s/AKfycbxTPQRvtozv209Vs2xizk7WgnHD6BofTNKnAeq0zfxLOThqqRJ0hNMwR1kGInIIdjFs/exec",
   WORK_TITLE: "Семестрова робота",
   SUBJECT: "Інтегрований курс історії, 6 клас",
   TOTAL_TIME_SECONDS: 40 * 60,
