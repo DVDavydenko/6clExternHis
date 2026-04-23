@@ -6,7 +6,7 @@ const CONFIG = {
   BREAK_TIME_SECONDS: 5 * 60,
   TOTAL_QUESTIONS: 48,
   BLOCK_SIZE: 24,
-  ATTEMPT_LOCK_KEY: "history6_sem2_attempt_completed_v1"
+  ATTEMPT_LOCK_KEY: "history6_sem2_attempt_completed_v2"
 };
 
 function generateAttemptId() {
@@ -17,7 +17,6 @@ function generateAttemptId() {
   ) {
     return crypto.randomUUID();
   }
-
   return "attempt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
 }
 
@@ -91,9 +90,7 @@ const appState = {
   integrity: {
     visibilityChanges: 0,
     blurCount: 0
-  },
-  hasSubmitted: false,
-  submitAttempted: false
+  }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -148,24 +145,14 @@ function showAttemptLockedState() {
 
   startCard.innerHTML = `
     <h2>Спробу вже використано</h2>
-    <p>
-      Для цього пристрою проходження цієї роботи вже зафіксовано.
-      Повторне виконання недоступне.
-    </p>
+    <p>Для цього пристрою проходження цієї роботи вже зафіксовано. Повторне виконання недоступне.</p>
   `;
-
-  const startBtn = $("startBtn");
-  if (startBtn) {
-    startBtn.disabled = true;
-    startBtn.style.display = "none";
-  }
 }
 
 function startMainTimer() {
   clearInterval(appState.mainTimerId);
   appState.mainTimerId = setInterval(() => {
     if (appState.isPausedForBreak) return;
-
     appState.mainTimer -= 1;
     $("timerLabel").textContent = formatTime(appState.mainTimer);
 
@@ -249,7 +236,6 @@ function nextQuestion() {
 
 function prevQuestion() {
   saveCurrentAnswer();
-
   if (appState.currentIndex > 0) {
     appState.currentIndex -= 1;
     renderQuestion();
@@ -267,7 +253,6 @@ function pauseForBreak() {
 
 function continueAfterBreak() {
   if (!appState.hasCompletedBreak) return;
-
   appState.isPausedForBreak = false;
   appState.currentIndex = CONFIG.BLOCK_SIZE;
   showScreen("screen-test");
@@ -334,7 +319,6 @@ function computeResults() {
 
   appState.shuffledQuestions.forEach((question) => {
     groupScores[question.group].total += 1;
-
     if (appState.answers[question.id] === question.correct) {
       raw += 1;
       groupScores[question.group].correct += 1;
@@ -351,7 +335,6 @@ function computeResults() {
 
 function buildPayload() {
   const results = computeResults();
-
   return {
     attemptId: appState.attemptId,
     studentName: appState.studentName,
@@ -376,18 +359,9 @@ function buildPayload() {
 
 function renderResultScreen() {
   const payload = buildPayload();
-
   $("studentResultLabel").textContent = `${payload.studentName}, ${payload.className}`;
   $("scoreRawLabel").textContent = `${payload.scoreRaw} / ${payload.maxScore}`;
   $("score12Label").textContent = payload.score12;
-
-  const grList = $("grList");
-  if (grList) {
-    grList.innerHTML = "";
-    const wrapper = grList.closest(".result-group");
-    if (wrapper) wrapper.style.display = "none";
-  }
-
   $("submitStatus").textContent = "Результат надсилається автоматично...";
   $("submitStatus").className = "";
 }
@@ -395,16 +369,12 @@ function renderResultScreen() {
 async function autoSubmitPayload() {
   const payload = buildPayload();
   const statusNode = $("submitStatus");
-  appState.submitAttempted = true;
 
   if (!CONFIG.GAS_URL) {
     statusNode.textContent = "Помилка: не задано адресу сервера для надсилання результату.";
     statusNode.className = "error";
     return false;
   }
-
-  statusNode.textContent = "Результат надсилається автоматично...";
-  statusNode.className = "";
 
   try {
     const response = await fetch(CONFIG.GAS_URL, {
@@ -429,12 +399,11 @@ async function autoSubmitPayload() {
       throw new Error(data.error || "Сервер повернув помилку.");
     }
 
-    appState.hasSubmitted = true;
-    statusNode.textContent = "Результат успішно надіслано.";
+    statusNode.textContent = "Результат успішно зафіксовано.";
     statusNode.className = "success";
     return true;
   } catch (error) {
-    statusNode.textContent = `Помилка надсилання: ${error.message}`;
+    statusNode.textContent = `Помилка фіксації результату: ${error.message}`;
     statusNode.className = "error";
     return false;
   }
@@ -449,20 +418,13 @@ async function finishTest() {
   lockAttempt();
   renderResultScreen();
   showScreen("screen-result");
-
-  const sendBtn = $("sendBtn");
-  if (sendBtn) {
-    sendBtn.disabled = true;
-    sendBtn.style.display = "none";
-  }
-
   await autoSubmitPayload();
 }
 
 function resetApp() {
   if (isAttemptLocked()) {
-    showScreen("screen-start");
     showAttemptLockedState();
+    showScreen("screen-start");
     return;
   }
 
@@ -485,22 +447,11 @@ function resetApp() {
     visibilityChanges: 0,
     blurCount: 0
   };
-  appState.hasSubmitted = false;
-  appState.submitAttempted = false;
 
   $("studentName").value = "";
   $("studentClass").value = "";
   $("timerLabel").textContent = formatTime(CONFIG.TOTAL_TIME_SECONDS);
   $("breakTimerLabel").textContent = formatTime(CONFIG.BREAK_TIME_SECONDS);
-
-  const resultGroup = document.querySelector("#grList")?.closest(".result-group");
-  if (resultGroup) resultGroup.style.display = "";
-
-  const sendBtn = $("sendBtn");
-  if (sendBtn) {
-    sendBtn.disabled = false;
-    sendBtn.style.display = "inline-block";
-  }
 
   showScreen("screen-start");
 }
@@ -547,8 +498,6 @@ function beginTest() {
   appState.breakTimer = CONFIG.BREAK_TIME_SECONDS;
   appState.isPausedForBreak = false;
   appState.hasCompletedBreak = false;
-  appState.hasSubmitted = false;
-  appState.submitAttempted = false;
 
   $("timerLabel").textContent = formatTime(appState.mainTimer);
   $("breakTimerLabel").textContent = formatTime(appState.breakTimer);
@@ -576,6 +525,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   $("themeToggle").addEventListener("click", toggleTheme);
+
   $("startBtn")?.addEventListener("click", () => {
     if (isAttemptLocked()) {
       showAttemptLockedState();
@@ -594,9 +544,4 @@ window.addEventListener("DOMContentLoaded", () => {
   $("finishBtn").addEventListener("click", finishTest);
   $("continueAfterBreakBtn").addEventListener("click", continueAfterBreak);
   $("restartBtn").addEventListener("click", resetApp);
-
-  const sendBtn = $("sendBtn");
-  if (sendBtn) {
-    sendBtn.style.display = "none";
-  }
 });
