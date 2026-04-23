@@ -20,11 +20,14 @@
       <section id="screen-start" class="screen active">
         <div class="card hero-card">
           <h2>Старт роботи</h2>
-          <p>У роботі 48 завдань. Після завершення результат можна локально переглянути, а після підключення Google Apps Script — надіслати вчителю в Telegram.</p>
+          <p>
+            У роботі 48 завдань. Після завершення результат можна переглянути на екрані,
+            а після підключення Google Apps Script — автоматично надіслати вчителю в Telegram.
+          </p>
           <ul class="plain-list">
             <li>2 блоки по 24 завдання</li>
             <li>Загальний час — 40 хвилин</li>
-            <li>Після першого блоку — обовʼязкова пауза 5 хвилин</li>
+            <li>Після першого блоку — обов’язкова пауза 5 хвилин</li>
             <li>Порядок завдань випадковий</li>
           </ul>
           <div class="actions">
@@ -36,12 +39,13 @@
       <section id="screen-student" class="screen">
         <div class="card">
           <h2>Дані учня</h2>
-          <label>Прізвище та ім’я
-            <input id="studentName" type="text" placeholder="Наприклад: Іваненко Іван" />
-          </label>
-          <label>Клас
-            <input id="studentClass" type="text" placeholder="Наприклад: 6-А" />
-          </label>
+
+          <label for="studentName">Прізвище та ім’я</label>
+          <input id="studentName" type="text" placeholder="Наприклад: Іваненко Іван" />
+
+          <label for="studentClass">Клас</label>
+          <input id="studentClass" type="text" placeholder="Наприклад: 6-А" />
+
           <div class="actions">
             <button id="studentBackBtn" class="secondary-btn" type="button">Назад</button>
             <button id="studentNextBtn" class="primary-btn" type="button">Далі</button>
@@ -52,7 +56,18 @@
       <section id="screen-instructions" class="screen">
         <div class="card">
           <h2>Інструкція</h2>
-          <p>Перед вами семестрова робота для екстернатної форми навчання. Відповідайте уважно, не поспішайте. Система окремо підраховує загальний результат, ГР1, ГР2 і процедурний показник ГР3.</p>
+          <p>
+            Перед вами семестрова робота для екстернатної форми навчання.
+            Відповідайте уважно, не поспішайте.
+            Система окремо підраховує:
+          </p>
+          <ul class="plain-list">
+            <li>загальний результат;</li>
+            <li>ГР1 — орієнтація в історичному часі та просторі;</li>
+            <li>ГР2 — робота з історичною та суспільствознавчою інформацією;</li>
+            <li>ГР3 — сумлінне виконання завдання в установлених межах.</li>
+          </ul>
+
           <div class="actions">
             <button id="instructionsBackBtn" class="secondary-btn" type="button">Назад</button>
             <button id="instructionsNextBtn" class="primary-btn" type="button">Перейти до роботи</button>
@@ -66,12 +81,15 @@
             <span id="blockLabel">Блок 1 із 2</span>
             <span id="timerLabel">40:00</span>
           </div>
+
           <div class="progress-wrap">
             <div id="progressBar" class="progress-bar"></div>
           </div>
+
           <p id="questionMeta" class="question-meta"></p>
           <h2 id="questionTitle" class="question-title"></h2>
           <div id="questionContainer"></div>
+
           <div class="actions">
             <button id="prevBtn" class="secondary-btn" type="button">Назад</button>
             <button id="nextBtn" class="primary-btn" type="button">Далі</button>
@@ -83,16 +101,26 @@
       <section id="screen-break" class="screen">
         <div class="card break-card">
           <h2>Час для перерви</h2>
-          <p>Перший блок завершено. Зробіть паузу, відірвіться від екрана і виконайте короткі вправи.</p>
+          <p>
+            Перший блок завершено. Зробіть паузу, відірвіться від екрана
+            і виконайте короткі вправи.
+          </p>
+
           <ul class="plain-list">
             <li>Подивіться у вікно або вдалину 20–30 секунд.</li>
             <li>Повільно переведіть погляд вліво, вправо, вгору і вниз.</li>
             <li>Випряміть спину, опустіть плечі, зробіть 3–4 спокійні вдихи.</li>
             <li>Повільно потягніться і змініть положення тіла.</li>
           </ul>
-          <p class="break-timer">До продовження: <span id="breakTimerLabel">05:00</span></p>
+
+          <p class="break-timer">
+            До продовження: <span id="breakTimerLabel">05:00</span>
+          </p>
+
           <div class="actions">
-            <button id="continueAfterBreakBtn" class="primary-btn" type="button" disabled>Продовжити другий блок</button>
+            <button id="continueAfterBreakBtn" class="primary-btn" type="button" disabled>
+              Продовжити другий блок
+            </button>
           </div>
         </div>
       </section>
@@ -120,7 +148,7 @@
 
           <div class="result-group">
             <h3>Стан відправлення</h3>
-            <p id="submitStatus">Локальний режим. Надсилання поки не виконувалось.</p>
+            <p id="submitStatus">Очікує надсилання.</p>
           </div>
 
           <div class="actions">
