@@ -20,9 +20,7 @@
       <section id="screen-start" class="screen active">
         <div class="card hero-card">
           <h2>Старт роботи</h2>
-          <p>
-             У роботі 48 завдань. Після завершення результат буде зафіксовано автоматично.
-          </p>
+          <p>У роботі 48 завдань. Після завершення результат буде зафіксовано автоматично.</p>
           <ul class="plain-list">
             <li>2 блоки по 24 завдання</li>
             <li>Загальний час — 40 хвилин</li>
@@ -58,13 +56,11 @@
           <p>
             Перед вами семестрова робота для екстернатної форми навчання.
             Відповідайте уважно, не поспішайте.
-            Система окремо підраховує:
           </p>
           <ul class="plain-list">
-            <li>загальний результат;</li>
-            <li>ГР1 — орієнтація в історичному часі та просторі;</li>
-            <li>ГР2 — робота з історичною та суспільствознавчою інформацією;</li>
-            <li>ГР3 — сумлінне виконання завдання в установлених межах.</li>
+            <li>Після завершення результат буде зафіксовано автоматично.</li>
+            <li>Робота має один цикл проходження на цьому пристрої.</li>
+            <li>Після першого блоку потрібно дочекатися завершення паузи.</li>
           </ul>
 
           <div class="actions">
@@ -140,25 +136,25 @@
             </div>
           </div>
 
-          <div class="result-group">
+          <div class="result-group" id="grWrapper" style="display:none;">
             <h3>Результати за групами результатів НУШ</h3>
             <ul id="grList" class="plain-list"></ul>
           </div>
 
           <div class="result-group">
-            <h3>Стан відправлення</h3>
-            <p id="submitStatus">Очікує надсилання.</p>
+            <h3>Стан фіксації результату</h3>
+            <p id="submitStatus">Очікування завершення роботи...</p>
           </div>
 
           <div class="actions">
             <button id="restartBtn" class="secondary-btn" type="button">На початок</button>
-            <button id="sendBtn" class="primary-btn" type="button">Надіслати результат</button>
+            <button id="sendBtn" class="primary-btn" type="button" style="display:none;">Надіслати результат</button>
           </div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=3"></script>
 </body>
 </html>
