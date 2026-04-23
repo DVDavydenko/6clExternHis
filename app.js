@@ -5,7 +5,8 @@ const CONFIG = {
   TOTAL_TIME_SECONDS: 40 * 60,
   BREAK_TIME_SECONDS: 5 * 60,
   TOTAL_QUESTIONS: 48,
-  BLOCK_SIZE: 24
+  BLOCK_SIZE: 24,
+  ATTEMPT_LOCK_KEY: "history6_sem2_attempt_completed_v1"
 };
 
 function generateAttemptId() {
@@ -90,14 +91,17 @@ const appState = {
   integrity: {
     visibilityChanges: 0,
     blurCount: 0
-  }
+  },
+  hasSubmitted: false,
+  submitAttempted: false
 };
 
 const $ = (id) => document.getElementById(id);
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((screen) => screen.classList.remove("active"));
-  $(id).classList.add("active");
+  const target = $(id);
+  if (target) target.classList.add("active");
 }
 
 function shuffle(array) {
@@ -110,8 +114,9 @@ function shuffle(array) {
 }
 
 function formatTime(totalSec) {
-  const m = String(Math.floor(totalSec / 60)).padStart(2, "0");
-  const s = String(totalSec % 60).padStart(2, "0");
+  const safe = Math.max(0, totalSec);
+  const m = String(Math.floor(safe / 60)).padStart(2, "0");
+  const s = String(safe % 60).padStart(2, "0");
   return `${m}:${s}`;
 }
 
@@ -129,13 +134,40 @@ function loadTheme() {
   setTheme(localStorage.getItem("history6Theme") || "light");
 }
 
+function isAttemptLocked() {
+  return localStorage.getItem(CONFIG.ATTEMPT_LOCK_KEY) === "done";
+}
+
+function lockAttempt() {
+  localStorage.setItem(CONFIG.ATTEMPT_LOCK_KEY, "done");
+}
+
+function showAttemptLockedState() {
+  const startCard = document.querySelector("#screen-start .card");
+  if (!startCard) return;
+
+  startCard.innerHTML = `
+    <h2>Спробу вже використано</h2>
+    <p>
+      Для цього пристрою проходження цієї роботи вже зафіксовано.
+      Повторне виконання недоступне.
+    </p>
+  `;
+
+  const startBtn = $("startBtn");
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.style.display = "none";
+  }
+}
+
 function startMainTimer() {
   clearInterval(appState.mainTimerId);
   appState.mainTimerId = setInterval(() => {
     if (appState.isPausedForBreak) return;
 
     appState.mainTimer -= 1;
-    $("timerLabel").textContent = formatTime(Math.max(appState.mainTimer, 0));
+    $("timerLabel").textContent = formatTime(appState.mainTimer);
 
     if (appState.mainTimer <= 0) {
       clearInterval(appState.mainTimerId);
@@ -150,7 +182,7 @@ function startBreakTimer() {
 
   appState.breakTimerId = setInterval(() => {
     appState.breakTimer -= 1;
-    $("breakTimerLabel").textContent = formatTime(Math.max(appState.breakTimer, 0));
+    $("breakTimerLabel").textContent = formatTime(appState.breakTimer);
 
     if (appState.breakTimer <= 0) {
       clearInterval(appState.breakTimerId);
@@ -181,7 +213,7 @@ function renderQuestion() {
   const blockNumber = questionNumber <= CONFIG.BLOCK_SIZE ? 1 : 2;
 
   $("blockLabel").textContent = `Блок ${blockNumber} із 2`;
-  $("questionMeta").textContent = `Завдання ${questionNumber} із ${CONFIG.TOTAL_QUESTIONS} · ${question.group}`;
+  $("questionMeta").textContent = `Завдання ${questionNumber} із ${CONFIG.TOTAL_QUESTIONS}`;
   $("questionTitle").textContent = question.question;
   $("progressBar").style.width = `${(questionNumber / CONFIG.TOTAL_QUESTIONS) * 100}%`;
 
@@ -195,7 +227,6 @@ function renderQuestion() {
 function saveCurrentAnswer() {
   const question = appState.shuffledQuestions[appState.currentIndex];
   const checked = document.querySelector(`input[name="${question.id}"]:checked`);
-
   if (checked) {
     appState.answers[question.id] = Number(checked.value);
   }
@@ -350,51 +381,29 @@ function renderResultScreen() {
   $("scoreRawLabel").textContent = `${payload.scoreRaw} / ${payload.maxScore}`;
   $("score12Label").textContent = payload.score12;
 
-  const list = $("grList");
-  list.innerHTML = "";
-
-  [
-    `ГР1: ${payload.grResults.GR1.correct} / ${payload.grResults.GR1.total}`,
-    `ГР2: ${payload.grResults.GR2.correct} / ${payload.grResults.GR2.total}`,
-    `ГР3: ${payload.grResults.GR3.level} (${payload.grResults.GR3.score}/3)`
-  ].forEach((line) => {
-    const li = document.createElement("li");
-    li.textContent = line;
-    list.appendChild(li);
-  });
-
-  if (payload.grResults.GR3.reasons.length) {
-    payload.grResults.GR3.reasons.forEach((reason) => {
-      const li = document.createElement("li");
-      li.textContent = `ГР3 — причина: ${reason}`;
-      list.appendChild(li);
-    });
+  const grList = $("grList");
+  if (grList) {
+    grList.innerHTML = "";
+    const wrapper = grList.closest(".result-group");
+    if (wrapper) wrapper.style.display = "none";
   }
 
-  $("submitStatus").textContent = "Очікує надсилання.";
+  $("submitStatus").textContent = "Результат надсилається автоматично...";
   $("submitStatus").className = "";
 }
 
-function finishTest() {
-  saveCurrentAnswer();
-  clearInterval(appState.mainTimerId);
-  clearInterval(appState.breakTimerId);
-  appState.finishedAt = new Date().toISOString();
-  renderResultScreen();
-  showScreen("screen-result");
-}
-
-async function sendPayload() {
+async function autoSubmitPayload() {
   const payload = buildPayload();
   const statusNode = $("submitStatus");
+  appState.submitAttempted = true;
 
   if (!CONFIG.GAS_URL) {
-    statusNode.textContent = "Не задано GAS_URL у файлі app.js.";
+    statusNode.textContent = "Помилка: не задано адресу сервера для надсилання результату.";
     statusNode.className = "error";
-    return;
+    return false;
   }
 
-  statusNode.textContent = "Надсилання...";
+  statusNode.textContent = "Результат надсилається автоматично...";
   statusNode.className = "";
 
   try {
@@ -420,15 +429,43 @@ async function sendPayload() {
       throw new Error(data.error || "Сервер повернув помилку.");
     }
 
+    appState.hasSubmitted = true;
     statusNode.textContent = "Результат успішно надіслано.";
     statusNode.className = "success";
+    return true;
   } catch (error) {
     statusNode.textContent = `Помилка надсилання: ${error.message}`;
     statusNode.className = "error";
+    return false;
   }
 }
 
+async function finishTest() {
+  saveCurrentAnswer();
+  clearInterval(appState.mainTimerId);
+  clearInterval(appState.breakTimerId);
+  appState.finishedAt = new Date().toISOString();
+
+  lockAttempt();
+  renderResultScreen();
+  showScreen("screen-result");
+
+  const sendBtn = $("sendBtn");
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.style.display = "none";
+  }
+
+  await autoSubmitPayload();
+}
+
 function resetApp() {
+  if (isAttemptLocked()) {
+    showScreen("screen-start");
+    showAttemptLockedState();
+    return;
+  }
+
   clearInterval(appState.mainTimerId);
   clearInterval(appState.breakTimerId);
 
@@ -448,16 +485,33 @@ function resetApp() {
     visibilityChanges: 0,
     blurCount: 0
   };
+  appState.hasSubmitted = false;
+  appState.submitAttempted = false;
 
   $("studentName").value = "";
   $("studentClass").value = "";
   $("timerLabel").textContent = formatTime(CONFIG.TOTAL_TIME_SECONDS);
   $("breakTimerLabel").textContent = formatTime(CONFIG.BREAK_TIME_SECONDS);
 
+  const resultGroup = document.querySelector("#grList")?.closest(".result-group");
+  if (resultGroup) resultGroup.style.display = "";
+
+  const sendBtn = $("sendBtn");
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.style.display = "inline-block";
+  }
+
   showScreen("screen-start");
 }
 
 function goToInstructions() {
+  if (isAttemptLocked()) {
+    showAttemptLockedState();
+    showScreen("screen-start");
+    return;
+  }
+
   const name = $("studentName").value.trim();
   const className = $("studentClass").value.trim();
 
@@ -470,6 +524,12 @@ function goToInstructions() {
 }
 
 function beginTest() {
+  if (isAttemptLocked()) {
+    showAttemptLockedState();
+    showScreen("screen-start");
+    return;
+  }
+
   appState.studentName = $("studentName").value.trim();
   appState.className = $("studentClass").value.trim();
 
@@ -487,6 +547,8 @@ function beginTest() {
   appState.breakTimer = CONFIG.BREAK_TIME_SECONDS;
   appState.isPausedForBreak = false;
   appState.hasCompletedBreak = false;
+  appState.hasSubmitted = false;
+  appState.submitAttempted = false;
 
   $("timerLabel").textContent = formatTime(appState.mainTimer);
   $("breakTimerLabel").textContent = formatTime(appState.breakTimer);
@@ -509,8 +571,20 @@ window.addEventListener("blur", () => {
 window.addEventListener("DOMContentLoaded", () => {
   loadTheme();
 
+  if (isAttemptLocked()) {
+    showAttemptLockedState();
+  }
+
   $("themeToggle").addEventListener("click", toggleTheme);
-  $("startBtn").addEventListener("click", () => showScreen("screen-student"));
+  $("startBtn")?.addEventListener("click", () => {
+    if (isAttemptLocked()) {
+      showAttemptLockedState();
+      showScreen("screen-start");
+      return;
+    }
+    showScreen("screen-student");
+  });
+
   $("studentBackBtn").addEventListener("click", () => showScreen("screen-start"));
   $("studentNextBtn").addEventListener("click", goToInstructions);
   $("instructionsBackBtn").addEventListener("click", () => showScreen("screen-student"));
@@ -520,5 +594,9 @@ window.addEventListener("DOMContentLoaded", () => {
   $("finishBtn").addEventListener("click", finishTest);
   $("continueAfterBreakBtn").addEventListener("click", continueAfterBreak);
   $("restartBtn").addEventListener("click", resetApp);
-  $("sendBtn").addEventListener("click", sendPayload);
+
+  const sendBtn = $("sendBtn");
+  if (sendBtn) {
+    sendBtn.style.display = "none";
+  }
 });
